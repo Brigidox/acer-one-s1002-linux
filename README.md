@@ -1,6 +1,6 @@
 # Acer One S1002 (N15P2) on Linux
 
-Fixes for four hardware/config quirks on the **Acer One S1002** — a Bay Trail Atom
+Fixes for five hardware/config quirks on the **Acer One S1002** — a Bay Trail Atom
 (Z36xx/Z37xx) detachable tablet, chassis code **N15P2** — running Linux.
 
 Developed and tested on [Omarchy](https://omarchy.org/) (Arch + Hyprland),
@@ -24,6 +24,7 @@ things, this is probably why.
 2. [No on-screen keyboard when the dock keyboard is detached](#2-no-on-screen-keyboard-when-detached) — squeekboard + udev
 3. [Screen doesn't rotate with the device](#3-screen-doesnt-auto-rotate) — iio-sensor-proxy + Hyprland
 4. [Lid close doesn't suspend](#4-lid-close-doesnt-suspend) — logind config
+5. [Bluetooth doesn't work / icon missing](#5-bluetooth-doesnt-work--icon-missing) — disabled service + Omarchy shell reload
 
 ---
 
@@ -264,6 +265,49 @@ busctl get-property org.freedesktop.login1 /org/freedesktop/login1 \
 
 ---
 
+## 5. Bluetooth doesn't work / icon missing
+
+The Bluetooth adapter is present and unblocked (`rfkill list` shows `hci0:
+Bluetooth`, both soft and hard blocked `no`), but nothing works and there's
+no Bluetooth icon anywhere.
+
+**Cause:** on this unit, `bluetooth.service` ships **disabled and inactive**
+— nothing wrong with the hardware, the daemon (`bluetoothd`) is just never
+started, so `bluetoothctl` has nothing to talk to (commands like
+`bluetoothctl show` hang/time out instead of erroring, which is the
+tell-tale symptom).
+
+**Fix:**
+
+```bash
+sudo systemctl enable --now bluetooth
+```
+
+Verify:
+
+```bash
+systemctl is-active bluetooth    # -> active
+bluetoothctl show                # -> Controller ..., Powered: yes
+```
+
+### Omarchy-specific gotcha: bar icon stays missing after enabling
+
+On Omarchy, `omarchy.bluetooth` is already present in the default bar layout
+(`~/.config/omarchy/shell.json`, right section), so you don't need to add it.
+But the Quickshell bar process was already running *before* the service
+existed/was active, and it doesn't poll for the adapter coming up later — so
+the icon stays missing even after `systemctl enable --now bluetooth`
+succeeds. Reload the shell so it re-detects the adapter:
+
+```bash
+omarchy restart shell
+```
+
+The icon should then appear in the top-right of the bar, between the tray
+and the network icon.
+
+---
+
 ## Hardware reference (this exact unit)
 
 | Component | Identifier |
@@ -275,6 +319,7 @@ busctl get-property org.freedesktop.login1 /org/freedesktop/login1 \
 | Dock keyboard hub | USB `05e3:0608` ("USB2.0 Hub") at bus/port `1-2` |
 | Dock keyboard+touchpad | USB `06cb:73f4` ("ITE Tech. Inc. ITE Device(8910)") |
 | Touchscreen | `ftsc9999:00-2808:5012` (FocalTech) |
+| Bluetooth | USB `1d6b:0246`, disabled service by default (`bluetooth.service`) |
 
 ## License
 
