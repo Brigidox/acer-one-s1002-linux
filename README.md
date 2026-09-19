@@ -24,7 +24,7 @@ things, this is probably why.
 2. [No on-screen keyboard when the dock keyboard is detached](#2-no-on-screen-keyboard-when-detached) — squeekboard + udev
 3. [Screen doesn't rotate with the device](#3-screen-doesnt-auto-rotate) — iio-sensor-proxy + Hyprland
 4. [Lid close doesn't suspend](#4-lid-close-doesnt-suspend) — logind config
-5. [Bluetooth doesn't work / icon missing](#5-bluetooth-doesnt-work--icon-missing) — disabled service + Omarchy shell reload
+5. [Bluetooth doesn't work out of the box](#5-bluetooth-doesnt-work-out-of-the-box) — disabled by default in Omarchy
 
 ---
 
@@ -265,17 +265,18 @@ busctl get-property org.freedesktop.login1 /org/freedesktop/login1 \
 
 ---
 
-## 5. Bluetooth doesn't work / icon missing
+## 5. Bluetooth doesn't work out of the box
 
 The Bluetooth adapter is present and unblocked (`rfkill list` shows `hci0:
-Bluetooth`, both soft and hard blocked `no`), but nothing works and there's
-no Bluetooth icon anywhere.
+Bluetooth`, both soft and hard blocked `no`), but nothing works: no icon in
+the bar's quick-access section, no devices to pair, nothing.
 
-**Cause:** on this unit, `bluetooth.service` ships **disabled and inactive**
-— nothing wrong with the hardware, the daemon (`bluetoothd`) is just never
-started, so `bluetoothctl` has nothing to talk to (commands like
-`bluetoothctl show` hang/time out instead of erroring, which is the
-tell-tale symptom).
+**Cause:** Omarchy ships `bluetooth.service` **disabled and inactive** by
+default on this install — nothing wrong with the hardware, the daemon
+(`bluetoothd`) is just never started, so `bluetoothctl` has nothing to talk
+to (commands like `bluetoothctl show` hang/time out instead of erroring,
+which is the tell-tale symptom) and the bar's `omarchy.bluetooth` widget has
+no adapter to report on, so it stays hidden.
 
 **Fix:**
 
@@ -290,13 +291,13 @@ systemctl is-active bluetooth    # -> active
 bluetoothctl show                # -> Controller ..., Powered: yes
 ```
 
-### Omarchy-specific gotcha: bar icon stays missing after enabling
+### Omarchy-specific gotcha: bar icon still missing after enabling
 
-On Omarchy, `omarchy.bluetooth` is already present in the default bar layout
-(`~/.config/omarchy/shell.json`, right section), so you don't need to add it.
-But the Quickshell bar process was already running *before* the service
-existed/was active, and it doesn't poll for the adapter coming up later — so
-the icon stays missing even after `systemctl enable --now bluetooth`
+`omarchy.bluetooth` is already present in the default bar layout
+(`~/.config/omarchy/shell.json`, right section), so you don't need to add it
+— but the Quickshell bar process was already running *before* the service
+existed/was active, and it doesn't poll for the adapter coming up later. So
+the icon stays missing even right after `systemctl enable --now bluetooth`
 succeeds. Reload the shell so it re-detects the adapter:
 
 ```bash
