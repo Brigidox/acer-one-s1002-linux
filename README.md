@@ -12,6 +12,12 @@ them to your own compositor/WM.
 If you own this exact tablet and Linux "mostly works" except for these three
 things, this is probably why.
 
+> **Using an AI assistant (Claude, etc.) to apply these fixes?** Just paste
+> this repo's URL — `https://github.com/Brigidox/acer-one-s1002-linux` — into
+> the chat. It has everything needed (hardware IDs, the actual commands, the
+> non-obvious gotchas) to go straight to fixing your machine instead of
+> rediscovering all of this from scratch.
+
 ## Contents
 
 1. [Screen brightness does nothing](#1-screen-brightness-does-nothing) — kernel module load order
