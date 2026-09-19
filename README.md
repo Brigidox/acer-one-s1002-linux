@@ -232,7 +232,18 @@ sudo install -m644 systemd/logind.conf.d/30-lid-suspend.conf /etc/systemd/logind
 [Login]
 HandleLidSwitch=suspend
 HandleLidSwitchExternalPower=suspend
+HoldoffTimeoutSec=5
 ```
+
+> **Testing gotcha: closing the lid again right after waking does nothing —
+> that's expected.** `systemd-logind` ignores lid events for a grace period
+> after startup/resume (`HoldoffTimeoutSec=`, default **30s**), so it can
+> detect hotplugged docks/external monitors before deciding what "closed"
+> should mean. Confirm with `journalctl -u systemd-logind`: a real miss shows
+> `Lid closed.` with no `Suspending...` right after it — that's the
+> holdoff, not a broken fix. Wait out the holdoff before testing again, or
+> shorten it as above (safe here since this tablet has no external display
+> output to detect).
 
 > **Applying this without a reboot: be careful.** `systemctl restart
 > systemd-logind` picks up the new drop-in immediately, but logind also owns
