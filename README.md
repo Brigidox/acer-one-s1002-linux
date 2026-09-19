@@ -263,6 +263,50 @@ busctl get-property org.freedesktop.login1 /org/freedesktop/login1 \
 # both should print "suspend"
 ```
 
+### Tuning: how long it waits to lock before suspending anyway
+
+Omarchy already ships a user service, `omarchy-sleep-lock.service`
+(`/usr/lib/systemd/user/omarchy-sleep-lock.service`, runs
+`omarchy-system-sleep-monitor`), that takes a systemd **delay inhibitor** on
+suspend so the session gets locked first. A delay inhibitor is a *timer, not
+a promise*: `logind` suspends anyway once the window (`InhibitDelayMaxSec=`,
+systemd default **5s**) expires, locked or not — it doesn't wait indefinitely
+for the lock to actually finish.
+
+On this unit, 5s isn't enough: closing the lid also reconfigures displays,
+and Quickshell waits for the screen set to settle before it can secure the
+session, so the default window can expire before the lock lands.
+
+**Fix:**
+
+```bash
+sudo install -m644 systemd/logind.conf.d/20-inhibit-delay.conf /etc/systemd/logind.conf.d/
+```
+
+```ini
+# systemd/logind.conf.d/20-inhibit-delay.conf
+[Login]
+InhibitDelayMaxSec=15
+```
+
+This *raises* the wait, which is what fixes the race (more time for the lock
+to land). You can also tune it the other way: **lower** `InhibitDelayMaxSec`
+if you want the machine to actually suspend sooner after the lid closes /
+sleep is triggered — e.g. drop it back toward the 5s default, or even lower,
+on a unit whose lock consistently completes fast. The tradeoff is real: too
+low and you risk the machine suspending before the screen is actually
+locked, so treat this as "however much slack your lock needs," not a knob to
+minimize on its own. Applies immediately with `systemctl restart
+systemd-logind` (same seat-teardown caveat as above) or on next boot.
+
+**Verify:**
+
+```bash
+busctl get-property org.freedesktop.login1 /org/freedesktop/login1 \
+  org.freedesktop.login1.Manager InhibitDelayMaxUSec
+# -> t <your value in microseconds>, e.g. "t 15000000" for 15s
+```
+
 ---
 
 ## 5. Bluetooth doesn't work out of the box
