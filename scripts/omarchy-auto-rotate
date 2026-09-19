@@ -1,0 +1,28 @@
+#!/bin/bash
+# Rotate the internal DSI panel + touchscreen to follow the device's physical
+# orientation, using iio-sensor-proxy's accelerometer orientation reporting.
+#
+# transform values are Wayland's wl_output_transform: 0=normal 1=90 2=180 3=270.
+# Mapping below follows the standard mutter/gnome-settings-daemon convention
+# (normal->0, left-up->1, bottom-up->2, right-up->3); confirmed by physically
+# rotating the device and observing the panel content stay upright.
+
+MONITOR="DSI-1"
+TOUCH="ftsc9999:00-2808:5012"
+MODE="1280x800@60"
+POSITION="0x0"
+
+apply_transform() {
+  local t="$1"
+  hyprctl eval "hl.monitor({output=\"$MONITOR\", mode=\"$MODE\", position=\"$POSITION\", scale=1, transform=$t})" >/dev/null
+  hyprctl eval "hl.device({name=\"$TOUCH\", transform=$t})" >/dev/null
+}
+
+monitor-sensor --accel 2>/dev/null | while IFS= read -r line; do
+  case "$line" in
+    *"orientation changed: normal"*)    apply_transform 0 ;;
+    *"orientation changed: left-up"*)   apply_transform 1 ;;
+    *"orientation changed: bottom-up"*) apply_transform 2 ;;
+    *"orientation changed: right-up"*)  apply_transform 3 ;;
+  esac
+done

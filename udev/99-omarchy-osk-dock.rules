@@ -1,0 +1,13 @@
+# Auto show/hide the squeekboard on-screen keyboard based on whether the
+# Acer One S1002 (N15P2) dock keyboard is physically attached.
+#
+# Matches the fixed USB bus/port path ("1-2") of the internal hub that feeds
+# the dock connector, NOT idVendor/idProduct: on a real physical detach, by
+# the time udevd processes the "remove" action the device's sysfs
+# descriptors are already gone, so the usb_id builtin (which derives
+# ID_VENDOR_ID/ID_MODEL_ID) fails and those ENV vars are unset - matching on
+# them only ever worked in `udevadm test` (which reads stale cached db
+# values), never on a real unplug. KERNEL/DEVPATH come straight from the
+# kernel uevent itself and are reliably present on both add and remove.
+ACTION=="remove", SUBSYSTEM=="usb", KERNEL=="1-2", RUN+="/usr/local/bin/omarchy-osk-dock-event remove"
+ACTION=="add", SUBSYSTEM=="usb", KERNEL=="1-2", ATTR{idVendor}=="05e3", ATTR{idProduct}=="0608", RUN+="/usr/local/bin/omarchy-osk-dock-event add"

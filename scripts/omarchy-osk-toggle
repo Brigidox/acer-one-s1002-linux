@@ -1,0 +1,19 @@
+#!/bin/bash
+# Toggle the squeekboard on-screen keyboard's visibility via its DBus service.
+# squeekboard itself is kept running (hidden) as a background autostart process
+# (see ~/.config/hypr/autostart.lua) since it only creates its layer-shell
+# surface, and responds to SetVisible, once its DBus service is up.
+
+pgrep -x squeekboard >/dev/null || setsid -f squeekboard >/dev/null 2>&1
+
+for _ in $(seq 1 20); do
+  busctl --user get-property sm.puri.OSK0 /sm/puri/OSK0 sm.puri.OSK0 Visible >/dev/null 2>&1 && break
+  sleep 0.1
+done
+
+current="$(busctl --user get-property sm.puri.OSK0 /sm/puri/OSK0 sm.puri.OSK0 Visible 2>/dev/null | awk '{print $2}')"
+if [[ "$current" == "true" ]]; then
+  exec omarchy-osk-set hide
+else
+  exec omarchy-osk-set show
+fi

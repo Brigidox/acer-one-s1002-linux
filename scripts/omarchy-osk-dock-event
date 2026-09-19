@@ -1,0 +1,29 @@
+#!/bin/bash
+# Invoked by udev (as root) when the Acer N15P2 dock keyboard
+# (USB idVendor=06cb idProduct=73f4, "ITE Tech. Inc. ITE Device(8910)")
+# is physically attached/detached. $1 is "add" or "remove".
+#
+# remove (screen pulled off the dock, no physical keyboard) -> show the OSK
+# add    (screen docked, physical keyboard present)          -> hide the OSK
+#
+# Runs as root via udev RUN+=, so it has to jump into the user's session bus
+# explicitly - udev gives it none of that environment.
+
+action="$1"
+
+# Auto-detect the logged-in desktop user (this is a single-user tablet setup;
+# adjust here if you run a multi-user/multi-seat system).
+user="$(loginctl list-users --no-legend | awk '{print $2}' | head -n1)"
+uid="$(id -u "$user")"
+runtime_dir="/run/user/$uid"
+
+case "$action" in
+  remove) osk_action="show" ;;
+  add) osk_action="hide" ;;
+  *) exit 0 ;;
+esac
+
+/usr/bin/sudo -u "$user" \
+  XDG_RUNTIME_DIR="$runtime_dir" \
+  DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime_dir/bus" \
+  omarchy-osk-set "$osk_action"

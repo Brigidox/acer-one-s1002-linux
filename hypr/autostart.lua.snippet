@@ -1,0 +1,9 @@
+-- Add this to ~/.config/hypr/autostart.lua
+
+-- On-screen keyboard, kept hidden until toggled with SUPER+SHIFT+K
+-- (see scripts/omarchy-osk-toggle and bindings.lua).
+o.launch_on_start("squeekboard")
+
+-- Auto-rotate the screen + touchscreen to match physical device orientation
+-- (see scripts/omarchy-auto-rotate).
+o.launch_on_start("omarchy-auto-rotate")
