@@ -1,6 +1,6 @@
 # Acer One S1002 (N15P2) on Linux
 
-Fixes for three hardware quirks on the **Acer One S1002** — a Bay Trail Atom
+Fixes for four hardware/config quirks on the **Acer One S1002** — a Bay Trail Atom
 (Z36xx/Z37xx) detachable tablet, chassis code **N15P2** — running Linux.
 
 Developed and tested on [Omarchy](https://omarchy.org/) (Arch + Hyprland),
@@ -23,6 +23,7 @@ things, this is probably why.
 1. [Screen brightness does nothing](#1-screen-brightness-does-nothing) — kernel module load order
 2. [No on-screen keyboard when the dock keyboard is detached](#2-no-on-screen-keyboard-when-detached) — squeekboard + udev
 3. [Screen doesn't rotate with the device](#3-screen-doesnt-auto-rotate) — iio-sensor-proxy + Hyprland
+4. [Lid close doesn't suspend](#4-lid-close-doesnt-suspend) — logind config
 
 ---
 
@@ -205,6 +206,50 @@ on other wlroots compositors, etc.) — the sensor-reading half stays the same.
   `hl.device{...}`, etc.) documented in
   `/usr/share/hypr/stubs/hl.meta.lua` — check that file first if you're
   adapting this and something errors with a Lua parse message.
+
+---
+
+## 4. Lid close doesn't suspend
+
+Closing the lid (or folding the keyboard dock shut) does nothing — the
+screen stays on, nothing suspends.
+
+**Cause:** per `man logind.conf`, `HandleLidSwitchExternalPower=` is
+*completely ignored by default*, for backwards compatibility, until you set
+it explicitly. This unit reports being on AC (`/sys/class/power_supply/ADP1`
+`online=1`) any time its charger or a powered dock is connected, so with no
+explicit override only the unplugged `HandleLidSwitch=` action was ever in
+effect — closing the lid while powered did nothing at all.
+
+**Fix:**
+
+```bash
+sudo install -m644 systemd/logind.conf.d/30-lid-suspend.conf /etc/systemd/logind.conf.d/
+```
+
+```ini
+# systemd/logind.conf.d/30-lid-suspend.conf
+[Login]
+HandleLidSwitch=suspend
+HandleLidSwitchExternalPower=suspend
+```
+
+> **Applying this without a reboot: be careful.** `systemctl restart
+> systemd-logind` picks up the new drop-in immediately, but logind also owns
+> your session's seat — restarting it while a graphical session is active
+> tears that seat down mid-flight, which crashes/restarts the compositor
+> (Hyprland, SDDM) right under you. It looks exactly like the machine
+> crashing, but it's just the desktop session bouncing. Either `sudo reboot`
+> instead, or expect `systemctl restart systemd-logind` to kill your current
+> session and save your work first.
+
+**Verify:**
+
+```bash
+busctl get-property org.freedesktop.login1 /org/freedesktop/login1 \
+  org.freedesktop.login1.Manager HandleLidSwitch HandleLidSwitchExternalPower
+# both should print "suspend"
+```
 
 ---
 
